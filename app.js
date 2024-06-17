@@ -1,4 +1,4 @@
-const { Op, and } = require("sequelize");
+const { Op } = require("sequelize");
 const sequelize = require("./database");
 const { Product } = require("./database");
 const { Carac } = require("./database");
@@ -35,7 +35,7 @@ app.get("/product/:id", async (req, res) => {
     }
 });
 
-app.get("/products/search/:text", async (req, res) => {
+/* app.get("/products/search/:text", async (req, res) => {
     const text = req.params.text.toLowerCase();
     try {
         const products = await Product.findAll();
@@ -49,9 +49,41 @@ app.get("/products/search/:text", async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la recherche des Produits." });
     }
-})
+}) */
 
-app.get("/products/:limit", async (req, res) => {
+app.get("/products/search/:text", async (req, res) => {
+    const text = req.params.text.toLowerCase();
+    try {
+        // doc sequelize : op like
+        const products = await Product.findAll({
+            where: {
+                [Op.or]: [
+                    {
+                        name: {
+                            [Op.like]: `%${text}%`
+                        }
+                    }
+                    ,
+                    {
+                        description: {
+                            [Op.like]: `%${text}%`
+                        }
+                    }
+                ]
+            }
+        });
+
+        products.length > 0 ? res.status(200).json(products) : res.status(404).json({ message: "Aucun Produit trouvé avec cette entrée." });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Erreur lors de la recherche des Produits." });
+    }
+});
+
+
+// refaire avec sequelize "limit" :
+/* app.get("/products/:limit", async (req, res) => {
     const limit = req.params.limit;
     try {
         const products = await Product.findAll({
@@ -69,7 +101,41 @@ app.get("/products/:limit", async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la recherche des Produits." });
     }
-})
+}) */
+
+app.get("/products/:limit", async (req, res) => {
+
+    const limit = parseInt(req.params.limit, 10);
+
+    if (isNaN(limit)) {
+        res.status(400).json({ message: "'limit' doit être un nombre." });
+    }
+
+    try {
+        const products = await Product.findAll({ limit: limit })
+
+        products.length > 0 ? res.status(200).json(products) : res.status(404).json({ message: "Aucun produit trouvé" });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Erreur lors de la recherche des Produits." });
+    }
+});
+
+app.get("/products", async (req, res) => {
+
+    try {
+        const products = await Product.findAll()
+
+        products.length > 0 ? res.status(200).json(products) : res.status(404).json({ message: "Aucun produit" });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Erreur lors de la recherche des Produits." });
+    }
+});
+
+
 
 app.get("/products/category/:categoryId", async (req, res) => {
     try {
@@ -100,16 +166,18 @@ app.post("/product", async (req, res) => {
 
 app.delete("/product/:id", async (req, res) => {
     try {
-        const product = await Product.destroy({
+        const product = await Product.findByPk(req.params.id);
+        const productDestroyed = product.dataValues;
+        await product.destroy({
             where: {
                 id: req.params.id
             }
         });
-        product ? res.status(200).json("Le produit a été supprimé") : res.status(400).json({ message: "Erreur lors de la suppression" });
+        product ? res.status(200).json({ message: "Produit supprimé : ", data: productDestroyed }) : res.status(400).json({ message: "Erreur lors de la suppression" });
     } catch (error) {
         res.status(500).json({ message: "Erreur 500" });
     }
-})
+});
 
 app.put("/product", async (req, res) => {
     try {
@@ -140,7 +208,7 @@ app.post("/product/review", async (req, res) => {
         UserId: user.id,
         ProductId: product.id
     });
-    res.status(200).json("review ajoutée avec succès");
+    res.status(200).json({ message: "La review a bien été ajoutée", data: review });
 });
 
 
@@ -151,9 +219,7 @@ app.put("/product/review", async (req, res) => {
         const user = await User.findByPk(modifiedReview.userId);
         await Review.update({
             rating: modifiedReview.rating,
-            content: modifiedReview.content,
-            UserId: user.id,
-            ProductId: product.id
+            content: modifiedReview.content
         }, {
             where: {
                 [Op.and]: {
@@ -178,7 +244,7 @@ app.put("/product/review", async (req, res) => {
     }
 });
 
-app.get("/product/review/:productId", async (req, res) => {
+app.get("/product/reviews/:productId", async (req, res) => {
     try {
         const reviews = await Review.findAll({
             where: {
@@ -190,21 +256,28 @@ app.get("/product/review/:productId", async (req, res) => {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
-app.delete("/product/review/:productId", async (req, res) => {
+app.delete("/product/reviews/:productId", async (req, res) => {
     try {
-        const reviews = await Review.destroy({
+        const reviews = await Review.findAll({
             where: {
                 ProductId: req.params.productId
             }
         })
-        reviews != undefined ? res.status(200).json("review(s) supprimée(s) correctement") : res.status(400).json({ message: "Erreur 400" });
+        const reviewsDestroyed = reviews.dataValues;
+
+        await Review.destroy({
+            where: {
+                ProductId: req.params.productId
+            }
+        })
+        reviews != undefined ? res.status(200).json({ message: "review(s) supprimée(s)", data: reviewsDestroyed }) : res.status(400).json({ message: "Erreur 400" });
     } catch (error) {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 // ROUTES DE CATEGORIES DE PRODUIT :
 
@@ -227,7 +300,7 @@ app.get("/category/:id", async (req, res) => {
         console.log(error);
         res.status(500).json("Erreur 500");
     }
-})
+});
 
 app.post("/category", async (req, res) => {
     const newCategory = req.body;
@@ -235,21 +308,19 @@ app.post("/category", async (req, res) => {
         title: newCategory.title
     });
     res.status(200).json(category.title + " a été ajouté à la liste des catégories");
-})
+});
 
 app.delete("/category/:id", async (req, res) => {
     try {
-        const category = await Category.destroy({
-            where: {
-                id: req.params.id
-            }
-        })
-        category != undefined ? res.status(200).json("catégorie supprimée correctement") : res.status(400).json({ message: "Erreur 400" });
+        const category = await Category.findByPk(req.params.id);
+        const categoryDestroyed = category.dataValues;
+        await category.destroy();
+        category != undefined ? res.status(200).json({ message: "catégorie supprimée", data: categoryDestroyed }) : res.status(400).json({ message: "Erreur 400" });
     } catch (error) {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 app.put("/category", async (req, res) => {
     try {
@@ -281,13 +352,13 @@ app.post("/user/login", async (req, res) => {
             }
         });
         if (userToCompare) {
-            await bcrypt.compare(user.password, userToCompare.password) == true ? res.status(200).json("OK") : res.status(400).json("mdp différents");
+            await bcrypt.compare(user.password, userToCompare.password) ? res.status(200).json("OK") : res.status(400).json("mdp différents");
         } else { res.status(400).json("pas de concordance des adresses mail dans la bdd") };
     } catch (error) {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 app.post("/user/signup", async (req, res) => {
     try {
@@ -303,7 +374,7 @@ app.post("/user/signup", async (req, res) => {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 app.put("/user", async (req, res) => {
     try {
@@ -333,7 +404,7 @@ app.get("/user/:id", async (req, res) => {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 app.get("/users", async (req, res) => {
     try {
@@ -343,7 +414,7 @@ app.get("/users", async (req, res) => {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
 // ROUTES POUR LE PANIER :
 
@@ -357,9 +428,9 @@ app.get("/cart/:userid", async (req, res) => {
         console.log(error);
         res.status(500).json("erreur 500");
     }
-})
+});
 
-app.post("/cart/:userid/:productid/:quantity", async (req,res) => {
+/* app.post("/cart/:userid/:productid/:quantity", async (req, res) => {
     const user = await User.findByPk(req.params.userid);
     const cart = await user.getCart();
     const product = await Product.findByPk(req.params.productid);
@@ -368,15 +439,55 @@ app.post("/cart/:userid/:productid/:quantity", async (req,res) => {
     cartProduct.quantity = req.params.quantity;
     cartProduct.save();
 
-    res.json(cartProduct);
-})
-
-/* app.put("/cart/:userid/:productid/:quantity", async (req,res) => {
-    const user = User.findByPk(req.params.userid);
-    const product = Product.findByPk(req.params.productid);
-
+    const productToSend = {
+        ...product.dataValues,
+        quantity: productCart.quantity
+    };
+    res.status(200).json(productToSend);
 
 }) */
+
+app.post("/cart/:userid/:productid/:quantity", async (req, res) => {
+    const user = await User.findByPk(req.params.userid);
+    const cart = await user.getCart();
+    const product = await Product.findByPk(req.params.productid);
+    await cart.addProduct(product);
+
+    const productCart = await ProductCart.findOne({
+        where: {
+            [Op.and]: {
+                ProductId: product.id,
+                CartId: cart.id
+            }
+        }
+    });
+
+    productCart.quantity = req.params.quantity;
+    await productCart.save();
+    const productToSend = {
+        ...product.dataValues,
+        quantity: productCart.quantity
+    };
+    res.status(200).json(productToSend);
+});
+
+/**
+ * Une route qui permet de modifier la quantité d'un produit dans le panier d'un utilisateur spécifié
+ */
+app.put("/cart/:userid/:productid/:quantity", async (req, res) => {
+    const user = await User.findByPk(req.params.userid);
+    const cart = await user.getCart();
+    const product = await Product.findByPk(req.params.productid);
+    await ProductCart.update({ quantity: req.params.quantity }, {
+        where: {
+            [Op.and]: {
+                CartId: cart.id,
+                ProductId: req.params.productid
+            }
+        }
+    })
+    res.status(200).json("quantité modifiée");
+})
 
 app.listen(8066, () => {
     console.log("Youhouuuuu serveur lancé sur localhost:8066");

@@ -1,10 +1,14 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
-const Product  = require("./Product");
-const  Cart  = require("./Cart");
+const Product = require("./Product");
+const Cart = require("./Cart");
 
 const ProductCart = sequelize.define("ProductCart", {
-    quantity: DataTypes.INTEGER
+    quantity: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
+        allowNull: false
+    }
 })
 
 
