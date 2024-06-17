@@ -5,8 +5,8 @@ const  Category  = require("./Category");
 const Product = sequelize.define("Product", {
     name: DataTypes.TEXT,
     price: DataTypes.FLOAT,
-    description: DataTypes.TEXT
-})
+    description: DataTypes.TEXT,
+});
 
 
 Category.hasMany(Product);

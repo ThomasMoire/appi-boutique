@@ -1,9 +1,9 @@
 const { Op } = require("sequelize");
 const sequelize = require("./database");
+const { Category } = require("./database");
 const { Product } = require("./database");
 const { Carac } = require("./database");
 const { Images } = require("./database");
-const { Category } = require("./database");
 const { Review } = require("./database");
 const { User } = require("./database");
 const { Cart } = require("./database");
@@ -159,7 +159,8 @@ app.post("/product", async (req, res) => {
     const product = await Product.create({
         name: newProduct.name,
         price: newProduct.price,
-        description: newProduct.description
+        description: newProduct.description,
+        CategoryId: newProduct.categoryId
     });
     res.status(200).json(product.name + " a été ajouté à la liste des produits");
 })

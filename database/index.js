@@ -4,15 +4,15 @@ const saltRounds = 10;
 
 const login = {
     database: "boutique",
-    username: "boutique",
-    password: "boutique"
+    username: "root",
+    password: "root"
 };
 
 // Connexion à la BDD
 const sequelize = new Sequelize(login.database, login.username, login.password, {
     host: 'localhost',
     dialect: 'mysql',
-    port: 3307,
+    port: 3306,
     logging: false
 });
 
@@ -39,7 +39,7 @@ module.exports.ProductImages = require("./ProductImages");
 module.exports.ProductCart = require("./ProductCart");
 
 // Application des changements à MySQL en peuplant la BDD
-sequelize.sync({ force: true })
+sequelize.sync({})
     .then(async () => {
         console.log("Les modèles et les tables sont synchronisés.")
         const Product = sequelize.models.Product;
@@ -47,23 +47,24 @@ sequelize.sync({ force: true })
         const User = sequelize.models.User;
         const Cart = sequelize.models.Cart;
         const produits = await Product.bulkCreate([
-            {
-                name: "Converse rouge",
-                price: 20,
-                description: "Magnifique paire de Converse ayant été portées par le célèbre Massinissa"
-            },
-            {
-                name: "Adidas du bled",
-                price: 10,
-                description: "Sisi c'est des vraies tkt"
-            }
+            // {
+            //     name: "Converse rouge",
+            //     price: 20,
+            //     description: "Magnifique paire de Converse ayant été portées par le célèbre Massinissa"
+            // },
+            // {
+            //     name: "Adidas du bled",
+            //     price: 10,
+            //     description: "Sisi c'est des vraies tkt"
+            // }
         ])
         const chaussures = await Category.create({
             title: "Chaussures"
         })
+        await chaussures.addProducts(produits);
 
-        await produits[0].setCategory(chaussures);
-        await produits[1].setCategory(chaussures);
+        // await produits[0].setCategory(chaussures);
+        // await produits[1].setCategory(chaussures);
 
         const jerem = await User.create({
             name: "Jerem",
