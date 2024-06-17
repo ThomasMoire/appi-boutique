@@ -46,22 +46,22 @@ sequelize.sync({})
         const Category = sequelize.models.Category;
         const User = sequelize.models.User;
         const Cart = sequelize.models.Cart;
-        const produits = await Product.bulkCreate([
-            // {
-            //     name: "Converse rouge",
-            //     price: 20,
-            //     description: "Magnifique paire de Converse ayant été portées par le célèbre Massinissa"
-            // },
-            // {
-            //     name: "Adidas du bled",
-            //     price: 10,
-            //     description: "Sisi c'est des vraies tkt"
-            // }
-        ])
-        const chaussures = await Category.create({
-            title: "Chaussures"
-        })
-        await chaussures.addProducts(produits);
+        // const produits = await Product.bulkCreate([
+        //     {
+        //         name: "Converse rouge",
+        //         price: 20,
+        //         description: "Magnifique paire de Converse ayant été portées par le célèbre Massinissa"
+        //     },
+        //     {
+        //         name: "Adidas du bled",
+        //         price: 10,
+        //         description: "Sisi c'est des vraies tkt"
+        //     }
+        // ])
+        // const chaussures = await Category.create({
+        //     title: "Chaussures"
+        // })
+        // await chaussures.addProducts(produits);
 
         // await produits[0].setCategory(chaussures);
         // await produits[1].setCategory(chaussures);
