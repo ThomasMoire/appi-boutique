@@ -514,10 +514,42 @@ app.get("/products/category/:categoryId", async (req, res) => {
 
 // checkJwt
 
+// app.post("/product", async (req, res) => {
+//     const newProduct = req.body;
+
+//     // Vérifiez si la catégorie est spécifiée
+//     if (!newProduct.Categorytitle) {
+//         return res.status(400).json("Catégorie non spécifiée. Veuillez sélectionner une catégorie.");
+//     }
+
+//     try {
+//         // Rechercher ou créer la catégorie
+//         let category = await Category.findOne({ where: { title: newProduct.Categorytitle } });
+//         if (!category) {
+//             category = await Category.create({ title: newProduct.Categorytitle });
+//         }
+
+//         // Créer le produit avec le CategoryId défini
+//         const product = {
+//             name: newProduct.name,
+//             price: newProduct.price,
+//             description: newProduct.description,
+//             CategoryId: category.id // Utiliser l'ID de la catégorie trouvée ou créée
+//         };
+
+//         await Product.create(product);
+//         res.status(200).json(`${product.name} a été ajouté à la liste des produits avec la catégorie ${category.title}`);
+//     } catch (error) {
+//         console.error("Erreur lors de l'ajout du produit:", error);
+//         res.status(500).json("Erreur lors de l'ajout du produit.");
+//     }
+// });
+
+
 app.post("/product", async (req, res) => {
     const newProduct = req.body;
 
-    // Vérifiez si la catégorie est spécifiée
+    // Vérifiez si le titre de la catégorie est spécifié
     if (!newProduct.Categorytitle) {
         return res.status(400).json("Catégorie non spécifiée. Veuillez sélectionner une catégorie.");
     }
@@ -544,6 +576,7 @@ app.post("/product", async (req, res) => {
         res.status(500).json("Erreur lors de l'ajout du produit.");
     }
 });
+
 
 
 
