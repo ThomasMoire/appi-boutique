@@ -367,56 +367,61 @@ app.use(cors());
 
 const secretKey = "my-secret-key";
 
-function checkJwt(req, res, next) {
-    const token = req.cookies.token; // Lire les cookies plutôt que le body.
-    if (!token) {
-        return res.status(401).json("Unauthorized, no token provided");
-    }
+// function checkJwt(req, res, next) {
+//     const token = req.cookies.token; // Lire les cookies plutôt que le body.
+//     if (!token) {
+//         return res.status(401).json("Unauthorized, no token provided");
+//     }
 
-    jwt.verify(token, secret, (err, decodedToken) => {
-        if (err) {
-            res.status(401).json("Unauthorized, wrong token");
-            return;
-        }
-        req.user = decodedToken;
-        next();
-    });
-}
+//     jwt.verify(token, secret, (err, decodedToken) => {
+//         if (err) {
+//             res.status(401).json("Unauthorized, wrong token");
+//             return;
+//         }
+//         req.user = decodedToken;
+//         next();
+//     });
+// }
 
 // Route de login
-app.post("/login", async (req, res) => {
-    const { username, password } = req.body;
+// app.post("/login", async (req, res) => {
+//     const { username, password } = req.body;
 
-    try {
-        // Chercher l'utilisateur dans la base de données
-        const user = await User.findOne({ where: { username } });
-        if (!user) {
-            return res.status(401).json({ message: "Invalid username or password" });
-        }
+//     try {
+//         // Chercher l'utilisateur dans la base de données
+//         const user = await User.findOne({ where: { username } });
+//         if (!user) {
+//             return res.status(401).json({ message: "Invalid username or password" });
+//         }
 
-        // Vérifier le mot de passe
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Invalid username or password" });
-        }
+//         // Vérifier le mot de passe
+//         const isPasswordValid = await bcrypt.compare(password, user.password);
+//         if (!isPasswordValid) {
+//             return res.status(401).json({ message: "Invalid username or password" });
+//         }
 
-        // Créer le token JWT
-        const payload = { userId: user.id, role: user.role };
-        const token = jwt.sign(payload, secretKey, { expiresIn: '1h' });
+//         // Créer le token JWT
+//         const payload = { userId: user.id, role: user.role };
+//         const token = jwt.sign(payload, secretKey, { expiresIn: '1h' });
 
-        // Envoyer le token dans un cookie
-        res.cookie('token', token, { httpOnly: true });
-        res.status(200).json({ message: "Login successful", token });
-    } catch (error) {
-        res.status(500).json({ message: "An error occurred during login" });
-    }
-});
+//         // Envoyer le token dans un cookie
+//         res.cookie('token', token, { httpOnly: true });
+//         res.status(200).json({ message: "Login successful", token });
+//     } catch (error) {
+//         res.status(500).json({ message: "An error occurred during login" });
+//     }
+// });
 
 // ROUTES DE PRODUIT :
 
 app.get("/product/:id", async (req, res) => {
     try {
-        const product = await Product.findByPk(req.params.id);
+        const product = await Product.findByPk(req.params.id, {
+            include: {
+                model: Category,
+                attributes: ['title'] // Inclure seulement le nom de la catégorie
+            }
+        });
         if (product) {
             res.status(200).json(product);
         } else {
@@ -426,6 +431,7 @@ app.get("/product/:id", async (req, res) => {
         res.status(500).json("Erreur 500");
     }
 });
+
 
 app.get("/products/search/:text", async (req, res) => {
     const text = req.params.text.toLowerCase();
@@ -470,7 +476,12 @@ app.get("/products/:limit", async (req, res) => {
 
 app.get("/products", async (req, res) => {
     try {
-        const products = await Product.findAll();
+        const products = await Product.findAll({
+            include: {
+                model: Category,
+                attributes: ['title'] // Inclure seulement le nom de la catégorie
+            }
+        });
         if (products.length > 0) {
             res.status(200).json(products);
         } else {
@@ -481,10 +492,15 @@ app.get("/products", async (req, res) => {
     }
 });
 
+
 app.get("/products/category/:categoryId", async (req, res) => {
     try {
         const products = await Product.findAll({
-            where: { CategoryId: req.params.categoryId }
+            where: { CategoryId: req.params.categoryId },
+            include: {
+                model: Category,
+                attributes: ['title'] // Inclure seulement le nom de la catégorie
+            }
         });
         if (products.length > 0) {
             res.status(200).json(products);
@@ -496,28 +512,44 @@ app.get("/products/category/:categoryId", async (req, res) => {
     }
 });
 
-app.post("/product", checkJwt, async (req, res) => {
+// checkJwt
+
+app.post("/product", async (req, res) => {
     const newProduct = req.body;
-    const product = {
-        name: newProduct.name,
-        price: newProduct.price,
-        description: newProduct.description,
-        CategoryId: newProduct.categoryId
-    };
+
+    // Vérifiez si la catégorie est spécifiée
+    if (!newProduct.Categorytitle) {
+        return res.status(400).json("Catégorie non spécifiée. Veuillez sélectionner une catégorie.");
+    }
+
     try {
-        const category = await Category.findByPk(newProduct.categoryId);
-        if (category) {
-            await Product.create(product);
-            res.status(200).json(product.name + " a été ajouté à la liste des produits");
-        } else {
-            res.status(400).json("catégorie inexistante");
+        // Rechercher ou créer la catégorie
+        let category = await Category.findOne({ where: { title: newProduct.Categorytitle } });
+        if (!category) {
+            category = await Category.create({ title: newProduct.Categorytitle });
         }
+
+        // Créer le produit avec le CategoryId défini
+        const product = {
+            name: newProduct.name,
+            price: newProduct.price,
+            description: newProduct.description,
+            CategoryId: category.id // Utiliser l'ID de la catégorie trouvée ou créée
+        };
+
+        await Product.create(product);
+        res.status(200).json(`${product.name} a été ajouté à la liste des produits avec la catégorie ${category.title}`);
     } catch (error) {
+        console.error("Erreur lors de l'ajout du produit:", error);
         res.status(500).json("Erreur lors de l'ajout du produit.");
     }
 });
 
-app.delete("/product/:id", checkJwt, async (req, res) => {
+
+
+
+// checkJwt,
+app.delete("/product/:id",  async (req, res) => {
     try {
         const product = await Product.findByPk(req.params.id);
         if (product) {
@@ -531,8 +563,8 @@ app.delete("/product/:id", checkJwt, async (req, res) => {
         res.status(500).json({ message: "Erreur 500" });
     }
 });
-
-app.put("/product", checkJwt, async (req, res) => {
+// checkJwt,
+app.put("/product",  async (req, res) => {
     try {
         const modifiedProduct = req.body;
         await Product.update(modifiedProduct, {
@@ -658,8 +690,8 @@ app.get("/categories", async (req, res) => {
         res.status(500).json("Erreur lors de la recherche des Catégories.");
     }
 });
-
-app.post("/category", checkJwt, async (req, res) => {
+// checkJwt,
+app.post("/category",  async (req, res) => {
     const newCategory = req.body;
     try {
         const existingCategory = await Category.findOne({ where: { name: newCategory.name } });
@@ -673,8 +705,8 @@ app.post("/category", checkJwt, async (req, res) => {
         res.status(500).json("Erreur lors de l'ajout de la catégorie.");
     }
 });
-
-app.delete("/category/:id", checkJwt, async (req, res) => {
+// checkJwt,
+app.delete("/category/:id",  async (req, res) => {
     try {
         const category = await Category.findByPk(req.params.id);
         if (category) {
@@ -688,8 +720,8 @@ app.delete("/category/:id", checkJwt, async (req, res) => {
         res.status(500).json({ message: "Erreur 500" });
     }
 });
-
-app.put("/category", checkJwt, async (req, res) => {
+// checkJwt,
+app.put("/category",  async (req, res) => {
     try {
         const modifiedCategory = req.body;
         await Category.update(modifiedCategory, {
